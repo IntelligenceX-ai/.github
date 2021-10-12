@@ -1,0 +1,4 @@
+{
+    "name": "Test and Deploy to Dev",
+    "description": "IntelligenceX CI workflow template that tests and deploys to dev"
+}

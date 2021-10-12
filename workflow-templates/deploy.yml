@@ -1,0 +1,49 @@
+name: Unit test and Deploy to develop branch
+on: [push,pull_request,workflow_dispatch]
+    
+jobs:
+  test:
+    name: Unit Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+      - uses: actions/checkout@v2
+      - name: Use Node.js 14.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
+      - run: |
+          npm install
+          npm run test --prefix code
+  deploy_stack:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+      - name: Deploy Development Stack
+        if: ${{ github.ref == 'refs/heads/develop' }}
+        run: |
+          sam build
+          sam deploy --stack-name ${{ github.event.repository.name }}-dev \
+                      --s3-prefix ${{ github.event.repository.name }}-dev \
+                      --parameter-overrides ParameterKey=DeploymentStage,ParameterValue=dev \
+                      ParameterKey=ApiStageName,ParameterValue=dev --tags STAGE=dev \
+                      --no-fail-on-empty-changeset --no-confirm-changeset
